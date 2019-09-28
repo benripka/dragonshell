@@ -31,8 +31,3 @@ void showPath(std::vector<std::string> arguments)
 {
     printf("showing path");
 }
-
-void changeDirectory(std::vector<std::string> arguments)
-{
-    printf("changing directory");
-}

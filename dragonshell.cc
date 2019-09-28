@@ -136,22 +136,3 @@ void executeCommand(std::vector<std::string> commands)
   }
   
 }
-
-void executeExternalProgram(std::vector<std::string> commands)
-{
-  const char* path = commands[0].c_str();
-  
-  //leave room for null terminator
-  const char** argv = new const char* [commands.size() + 1];
-
-  for (int i = 0; i < commands.size(); i++)
-  {
-    argv[i] = commands[i].c_str();
-  }
-
-  argv[commands.size()] = NULL;
-
-  char* const* envp = {NULL};
-
-  execve(path, (char**) argv, envp);
-}
