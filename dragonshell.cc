@@ -11,7 +11,7 @@
 
 bool shellRunning = true;
 
-std::string $PATH = "/usr/:/user/bin/";
+std::string $PATH = "/usr/bin/:/bin/";
 
 /**
  * @brief Tokenize a string 

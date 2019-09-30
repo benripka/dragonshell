@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/dragonshell",
+            "program": "${workspaceFolder}/a.out",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -21,11 +21,11 @@
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
-                },
-                {
-                    "description": "Set to follow fork mode",
-                    "text": "-gdb-set follow-fork-mode child"
                 }
+                // {
+                //     "description": "Set to follow fork mode",
+                //     "text": "-gdb-set follow-fork-mode child"
+                // }
             ]
         }
     ]

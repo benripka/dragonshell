@@ -82,7 +82,7 @@ void executeExternalProgram(std::vector<std::string> commands)
     }
     else
     {
-        printf("File does not exits\n");
+        printf("file not found");
     }
     
     std::vector<std::string> pathsInPATH = tokenize($PATH, ":");
@@ -91,7 +91,7 @@ void executeExternalProgram(std::vector<std::string> commands)
     {
         const char* fullyQualifiedFilename = pathsInPATH[i].append(commands[0]).c_str();
 
-        //found the file in PATH variable
+        //Found the file in PATH variable
         if(checkIfFileExists(fullyQualifiedFilename))
         {
             if(execve(fullyQualifiedFilename, (char**) argv, envp) < 0) 
@@ -99,6 +99,10 @@ void executeExternalProgram(std::vector<std::string> commands)
                 printf("Could not execute external program");
                 exit(EXIT_FAILURE);
             }
+        }
+        else 
+        {
+            printf("File not founds");
         }
     }
     printf("file not found in path");
