@@ -9,9 +9,17 @@
 #include "commands.h"
 #include "utils.h"
 
-bool shellRunning = true;
+bool shellRunning;
+bool runningInBackground;
+std::string $PATH;
 
-std::string $PATH = "/usr/bin/:/bin/";
+int pipefd[2];
+
+const char* LineDeliminator = ";";
+const char* CommandDeliminator = " ";
+const char* PipeDeliminator = "|";
+const char* prompt = ">>";
+const int MaxOutputBufferSize = 300;
 
 /**
  * @brief Tokenize a string 
@@ -26,74 +34,13 @@ void handleExitSignal(int signumber)
   printf("Caught yo signal foo");
 }
 
-void processInput(std::string input);
-void executeCommandInBackground(std::vector<std::string> commands);
-void executeCommand(std::vector<std::string> commands);
-
-const char* LineDeliminator = ";";
-const char* CommandDeliminator = " ";
-const char* ProcessDeliminator = "|";
-const char* prompt = ">>";
-const int MaxOutputBufferSize = 300;
-
-int pipefd[2];
-
-int main(int argc, char **argv) {
-  // print the string prompt without a newline, before beginning to read
-  // tokenize the input, run the command(s), and print the result
-  // do this in a loop
-
-  char *buffer;
-  size_t maxBufferSize = 200 * sizeof(char);
-
-  struct sigaction exitSignalAction;
-  exitSignalAction.sa_handler = handleExitSignal;
-  exitSignalAction.sa_flags = 0;
-
-  sigaction(SIGINT, &exitSignalAction, NULL); 
-
-
-  while(shellRunning)
+void executeCommand(std::vector<std::string> commands, bool outputPiped, bool inputPiped)
+{
+  if(commands.back().compare("&") == 0)
   {
-
-    printf(">>");
-
-    std::string input = std::string();
-
-    std::getline(std::cin, input);
-
-    processInput(input);
-
+    runningInBackground = true;
   }
 
-  return 0;
-}
-
-void processInput(std::string input)
-{
-  std::vector<std::string> lines = tokenize(input, LineDeliminator);
-
-  for (int i = 0; i < lines.size(); i++)
-  {
-    std::vector<std::string> commands = tokenize(lines[i], CommandDeliminator);
-    if(commands.back().compare("&") == 0)
-    {
-      executeCommandInBackground(commands);
-    }
-    else
-    {
-      executeCommand(commands);
-    }
-  }
-}
-
-void executeCommandInBackground(std::vector<std::string> commands)
-{
-  printf("executing command in background");
-}
-
-void executeCommand(std::vector<std::string> commands)
-{
   std::vector<std::string> arguments = commands;
   arguments.erase(arguments.begin());
 
@@ -122,35 +69,108 @@ void executeCommand(std::vector<std::string> commands)
 
     pid_t pid;
     int childStatus = 1;
-    
-    if(pipe(pipefd) < 0) printf("Pipe failed");
-    if(pid = fork() < 0) printf("Fork Failed");
+
+    pipe(pipefd);
+    pid = fork();
 
     //child
     if(pid == 0)
     {
-      executeExternalProgram(commands);
+      if(!inputPiped && !outputPiped)
+      {
+        executeExternalProgram(commands, STDIN_FILENO, STDOUT_FILENO);
+      }
+      else if (inputPiped && !outputPiped)
+      {
+        executeExternalProgram(commands, pipefd[0], STDOUT_FILENO);
+      }
+      else if(!inputPiped && outputPiped)
+      {
+        executeExternalProgram(commands, STDIN_FILENO, pipefd[1]);
+      }
+      else
+      {
+        executeExternalProgram(commands, pipefd[0], pipefd[1]);
+      }
+      
     }
     //parent
-    else
+    else if(!runningInBackground)
     {
-      printf("parent is waiting");
-
-      char buffer[MaxOutputBufferSize];
-
-      close(pipefd[1]); //no need to write
-
-      ssize_t characterCount;
-
-      while ((characterCount = read(pipefd[0], buffer, MaxOutputBufferSize)) > 0)
-      {
-        write(STDOUT_FILENO, buffer, characterCount);
-      }
-
-      close(pipefd[0]);
-
       wait(&childStatus);
     }
   }
+}
+
+void processLine(std::string line)
+{
+  std::vector<std::string> pipedCommands = tokenize(line, PipeDeliminator);
+
+
+    //Single command, no need to pipe
+    if(pipedCommands.size() == 1)
+    {
+      executeCommand(tokenize(pipedCommands[0], CommandDeliminator), false, false);
+      return;
+    }
+
+    for(int j = 0; j <  pipedCommands.size(); j++)
+    {
+      if(j == 0)
+      {
+        executeCommand(tokenize(pipedCommands[j], CommandDeliminator), true, false);
+      }
+      else if(j == pipedCommands.size())
+      {
+        executeCommand(tokenize(pipedCommands[j], CommandDeliminator), false, true);
+      }
+      else
+      {
+        executeCommand(tokenize(pipedCommands[j], CommandDeliminator), true, true);
+      }
+    }
+}
+
+
+void processInput(std::string input)
+{
+  std::vector<std::string> lines = tokenize(input, LineDeliminator);
+
+  for (int i = 0; i < lines.size(); i++)
+  {
+    processLine(lines[i]);
+  }
+}
+
+int main(int argc, char **argv) {
+  // print the string prompt without a newline, before beginning to read
+  // tokenize the input, run the command(s), and print the result
+  // do this in a loop
+
+  char *buffer;
+  size_t maxBufferSize = 200 * sizeof(char);
+
+  $PATH = "/usr/bin/:/bin/";
+  shellRunning = true;
+  runningInBackground = false;
+
+  struct sigaction exitSignalAction;
+  exitSignalAction.sa_handler = handleExitSignal;
+  exitSignalAction.sa_flags = 0;
+  
+  while(shellRunning)
+  {
+
+    printf(">>");
+
+    std::string input = std::string();
+
+    std::getline(std::cin, input);
+
+    processInput(input);
+
+  }
+
+  return 0;
 }
 

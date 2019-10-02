@@ -20,23 +20,29 @@ void printWorkingDirectory(std::vector<std::string> arguments)
     getcwd(workingDirectory, 100 * sizeof(char));
 
     printf("%s\n", workingDirectory);
-    printf("\n");
 }
 
 void exitShell(std::vector<std::string> arguments)
 {
-    printf("exiting shell");
 }
 
 void addAddressToPath(std::string address)
 {
-    printf("adding address to path");
-    $PATH.append(std::string(":").append(address));
+    std::string pathVariableName = "$PATH";
+    if(pathVariableName.compare(address.substr(0, 5)) == 0)
+    {
+        address.erase(0,6);
+        $PATH.append(std::string(":").append(address));
+    }
+    else 
+    {
+        $PATH = address;
+    }
 }
 
 void showPath(std::vector<std::string> arguments)
 {
-    printf("%s", $PATH.c_str());
+    printf("%s\n", $PATH.c_str());
 }
 
 bool checkIfFileExists(const char* fileName)
@@ -48,62 +54,42 @@ bool checkIfFileExists(const char* fileName)
     else return false;
 }
 
-void executeExternalProgram(std::vector<std::string> commands)
+void executeExternalProgram(std::vector<std::string> commands, int inputfd, int outputfd)
 {
-    //do not need to read, only write
-    close(pipefd[0]);
-    dup2(pipefd[1], STDOUT_FILENO);
 
-    const char* path = commands[0].c_str();
+    dup2(inputfd, STDIN_FILENO);
+    dup2(outputfd, STDOUT_FILENO);
+
+    char* path = (char*) commands[0].c_str();
+    const char* delimin = ":";
 
     //leave room for null terminator
-    const char** argv = new const char* [commands.size() + 1];
+    char * argv[commands.size() + 1] = {};
+    char *const envp[] = {NULL};
 
     for (int i = 0; i < commands.size(); i++)
     {
-        argv[i] = commands[i].c_str();
+        argv[i] = (char *) commands[i].c_str();
+        (char* const) argv[i];
     }
 
     argv[commands.size()] = NULL;
-
-    char* const* envp = {NULL};
-
-    printf("Going to try the execve");
-
-    //check is the path to a file
-
-    if(checkIfFileExists(path))
-    {
-        if(execve(path, (char**) argv, envp) < 0) 
-        {
-            printf("Could not execute external program");
-            exit(EXIT_FAILURE);
-        }
-    }
-    else
-    {
-        printf("file not found");
-    }
     
-    std::vector<std::string> pathsInPATH = tokenize($PATH, ":");
+    std::vector<std::string> pathsInPATH = tokenize($PATH, delimin);
 
     for(int i = 0; i < pathsInPATH.size(); i++)
     {
         const char* fullyQualifiedFilename = pathsInPATH[i].append(commands[0]).c_str();
 
-        //Found the file in PATH variable
-        if(checkIfFileExists(fullyQualifiedFilename))
+        if(access(fullyQualifiedFilename, F_OK) == 0)
         {
-            if(execve(fullyQualifiedFilename, (char**) argv, envp) < 0) 
-            {
-                printf("Could not execute external program");
-                exit(EXIT_FAILURE);
-            }
-        }
-        else 
-        {
-            printf("File not founds");
-        }
+            execve(fullyQualifiedFilename, (char**) argv, envp);
+
+            return;
+        } 
     }
+
     printf("file not found in path");
+
+    return;
 }

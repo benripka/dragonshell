@@ -1,8 +1,7 @@
 #include <vector>
 #include <string>
 #include "utils.h"
-
-void executeExternalProgram(std::vector<std::string> commands);
+void executeExternalProgram(std::vector<std::string> commands, int inputfd, int outputfd);
 void changeDirectory(std::vector<std::string> arguments);
 void printWorkingDirectory(std::vector<std::string> arguments);
 void exitShell(std::vector<std::string> arguments);
