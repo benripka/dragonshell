@@ -54,5 +54,75 @@ bool checkIfFileExists(const char* fileName)
     else return false;
 }
 
+int tryBuiltins(std::vector<std::string> commands)
+{
+  std::vector<std::string> arguments = commands;
+  arguments.erase(arguments.begin());
+
+  if(commands[0].compare("cd") == 0)
+  {
+    changeDirectory(arguments);
+    return 0;
+  }
+  else if(commands[0].compare("pwd") == 0)
+  {
+    printWorkingDirectory(arguments);
+    return 0;
+  }
+  else if(commands[0].compare("exit") == 0)
+  {
+    exitShell(arguments);
+    return 0;
+  }
+  else if(commands[0].compare("a2path") == 0)
+  {
+    addAddressToPath(commands[1]);
+    return 0;
+  }
+  else if(commands[0].compare("$PATH") == 0)
+  {
+    showPath(arguments);
+    return 0;
+  }
+  return -1;
+}
+
+void executeExternalProgram(std::vector<std::string> commands)
+{
+    if(commands.back().compare("&") == 0)
+    {
+        commands.pop_back();
+    }
+    char* path = (char*) commands[0].c_str();
+    const char* delimin = ":";
+
+    //leave room for null terminator
+    char * argv[commands.size() + 1] = {};
+    char *const envp[] = {NULL};
+
+    for (int i = 0; i < commands.size(); i++)
+    {
+        argv[i] = (char *) trim(commands[i]).c_str();
+        (char* const) argv[i];
+    }
+
+    argv[commands.size()] = NULL;
+    
+    std::vector<std::string> pathsInPATH = tokenize($PATH, delimin);
+
+    for(int i = 0; i < pathsInPATH.size(); i++)
+    {
+        const char* fullyQualifiedFilename = pathsInPATH[i].append(commands[0]).c_str();
+
+        if(access(fullyQualifiedFilename, F_OK) == 0)
+        {
+          execve(fullyQualifiedFilename, (char**) argv, envp);
+          _exit(0);
+        } 
+    }
+    printf("file not found in path");
+    _exit(0);
+}
+
 
 
