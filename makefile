@@ -12,4 +12,5 @@ utils:
 
 clean: 
 	rm -rf *.o; \
-	rm -rf dragonshell;
+	rm -rf dragonshell; \
+	rm -rf *.txt;
